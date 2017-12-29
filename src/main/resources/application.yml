@@ -1,0 +1,9 @@
+management:
+  security:
+    enabled: true
+    roles: ACTRADMIN 
+  context-path: /manage
+security:
+  user:
+    name: act 
+    password: act

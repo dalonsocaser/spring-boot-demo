@@ -4,6 +4,7 @@ import static org.hamcrest.CoreMatchers.is;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 import static org.springframework.test.web.servlet.setup.MockMvcBuilders.standaloneSetup;
@@ -11,23 +12,35 @@ import static org.springframework.test.web.servlet.setup.MockMvcBuilders.standal
 import java.util.Arrays;
 
 import org.junit.Test;
+import org.junit.runner.RunWith;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.http.MediaType;
+import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.test.context.junit4.SpringRunner;
 import org.springframework.test.web.servlet.MockMvc;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
+
+import es.caser.spring.springbootdemo.advice.UserControllerAdvice;
+import es.caser.spring.springbootdemo.exception.UserNotFoundException;
 import es.caser.spring.springbootdemo.model.User;
 import es.caser.spring.springbootdemo.repository.IUserRepository;
 
 
-
+@RunWith(SpringRunner.class)
+@SpringBootTest
 public class UserControllerTest {
-
+	@Autowired
+    private PasswordEncoder passwordEncoder;
+	@Autowired private ObjectMapper mapper;
 	@Test
 	public void should_FindUser_whenRequestingByUsername() throws Exception {
 		User user = createUser("bilbo","bolson","bbolson","comarca");
 		IUserRepository mockRepository = mock(IUserRepository.class);
 		when(mockRepository.findByUsername("bbolson")).thenReturn(user);
 
-		UserController controller = new UserController(mockRepository);
+		UserController controller = new UserController(mockRepository,null);
 		MockMvc mockMvc = standaloneSetup(controller).build();
 		mockMvc.perform(get("/users/bbolson")
 		.accept(MediaType.APPLICATION_JSON))
@@ -44,7 +57,7 @@ public class UserControllerTest {
 		IUserRepository mockRepository = mock(IUserRepository.class);
 		when(mockRepository.findAll()).thenReturn(Arrays.asList(new User[]{user}));
 
-		UserController controller = new UserController(mockRepository);
+		UserController controller = new UserController(mockRepository,null);
 		MockMvc mockMvc = standaloneSetup(controller).build();
 		mockMvc.perform(get("/users")
 		.accept(MediaType.APPLICATION_JSON))
@@ -56,17 +69,38 @@ public class UserControllerTest {
     	
 
 	}
-	@Test
-	public void should_ReturnNotFound_whenRequestingForFrodo() throws Exception {
-		User user = createUser("bilbo","bolson","bbolson","comarca");
+	@Test()
+	public void should_ReturnNotFound_whenRequestingForFrodo() throws Exception {		
 		IUserRepository mockRepository = mock(IUserRepository.class);
-		when(mockRepository.findAll()).thenReturn(Arrays.asList(new User[]{user}));
+		when(mockRepository.findByUsername("frodo")).thenThrow(new UserNotFoundException("frodo"));
 
-		UserController controller = new UserController(mockRepository);
-		MockMvc mockMvc = standaloneSetup(controller).build();
-		mockMvc.perform(get("/user/frodo")
+		UserController controller = new UserController(mockRepository,null);
+		MockMvc mockMvc = standaloneSetup(controller)
+				.setControllerAdvice(new UserControllerAdvice())
+				.build();
+		mockMvc.perform(get("/users/frodo")
 		.accept(MediaType.APPLICATION_JSON))
     	.andExpect(status().isNotFound());
+    	
+
+	}
+	@Test
+	public void should_ReturnUser_WhenRequestingSignup() throws Exception {
+		User user = createUser("bilbo","bolson","bbolson","comarca");
+		IUserRepository mockRepository = mock(IUserRepository.class);
+		when(mockRepository.save(user)).thenReturn(user);
+
+		UserController controller = new UserController(mockRepository,passwordEncoder);
+		MockMvc mockMvc = standaloneSetup(controller).build();
+		mockMvc.perform(put("/users")
+				.contentType(MediaType.APPLICATION_JSON)
+				.content(mapper.writeValueAsString(user))
+		.accept(MediaType.APPLICATION_JSON))
+    	.andExpect(status().isOk())
+    	.andExpect(jsonPath("$.name", is(user.getName())))
+    	.andExpect(jsonPath("$.surname", is(user.getSurname())))
+    	.andExpect(jsonPath("$.username", is(user.getUsername())));
+    	
     	
 
 	}

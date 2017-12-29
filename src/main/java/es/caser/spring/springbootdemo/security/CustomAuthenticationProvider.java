@@ -1,12 +1,13 @@
 package es.caser.spring.springbootdemo.security;
 
-import java.util.Collections;
+import java.util.Arrays;
 
 import org.springframework.security.authentication.AuthenticationProvider;
 import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.AuthenticationException;
+import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.stereotype.Component;
 
@@ -29,7 +30,7 @@ public class CustomAuthenticationProvider implements AuthenticationProvider {
         if (user!=null){
 	        if (user.getPassword().equals(password)){
 	        	return new UsernamePasswordAuthenticationToken
-	                    (username, password, Collections.emptyList());
+	                    (username, password, Arrays.asList(new SimpleGrantedAuthority[]{new SimpleGrantedAuthority("ACTRADMIN")}));
 	        }
 	        else {
 	            throw new
